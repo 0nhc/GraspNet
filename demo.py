@@ -15,6 +15,8 @@ from graspnetAPI.graspnet_eval import GraspGroup
 import rospy
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs import point_cloud2
+import tf
+import tf2_ros
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(ROOT_DIR)
@@ -31,15 +33,15 @@ class GSNet:
         rospy.init_node("gsnet", anonymous=True)
         self._init = False
         self.poincloud_sub = rospy.Subscriber("/camera/depth/color/points", PointCloud2, self._pointcloud_callback)
+        self.tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
 
         while not self._init:
             pass
         self._read_params()
         data, points = self._wrap_data_ros()
         grasp_group = self._inference(data)
+        self._get_best_grasping_pose(grasp_group)
         self._visualize(grasp_group, points)
-
-        rospy.spin()
 
     def _pointcloud_callback(self, data=PointCloud2()):
         if not self._init :
@@ -73,44 +75,9 @@ class GSNet:
         cloud = np.asarray(self.pcd_ros)
 
         mask_1 = (cloud[:,2] > 0)
-        mask_2 = (cloud[:,2] < 1.5)
-        mask_3 = (cloud[:,0] > -0.05)
-        mask_4 = (cloud[:,0] < 0.6)
-        mask = mask_1 * mask_2 * mask_3 * mask_4
-        cloud_masked = cloud[mask]
-
-        # sample points random
-        if len(cloud_masked) >= self.cfg["num_point"]:
-            idxs = np.random.choice(len(cloud_masked), self.cfg["num_point"], replace=False)
-        else:
-            idxs1 = np.arange(len(cloud_masked))
-            idxs2 = np.random.choice(len(cloud_masked), self.cfg["num_point"] - len(cloud_masked), replace=True)
-            idxs = np.concatenate([idxs1, idxs2], axis=0)
-        cloud_sampled = cloud_masked[idxs]
-
-        ret_dict = {'point_clouds': cloud_sampled.astype(np.float32),
-                    'coors': cloud_sampled.astype(np.float32) / self.cfg["voxel_size"],
-                    'feats': np.ones_like(cloud_sampled).astype(np.float32),
-                    }
-        return ret_dict, cloud_sampled
-    
-    def _wrap_data(self):
-        # Load Data
-        depth = cv2.imread(self.cfg["depth_img_path"])
-        depth = cv2.cvtColor(depth, cv2.COLOR_BGR2GRAY)
-        width = self.cfg["camera_width"]
-        height = self.cfg["camera_height"]
-        K = self.cfg["camera_K"]
-        depth_scale = self.cfg["depth_scale"]
-
-        # Generate Pointcloud
-        cloud = self._create_point_cloud_from_depth_image(depth, height, width, K, depth_scale)
-
-        # Sample Points
-        mask_1 = (cloud[:,:,2] > 0)
-        mask_2 = (cloud[:,:,2] < 1.5)
-        mask_3 = (cloud[:,:,0] > -0.05)
-        mask_4 = (cloud[:,:,0] < 0.6)
+        mask_2 = (cloud[:,2] < 1.0)
+        mask_3 = (cloud[:,0] > -0.7)
+        mask_4 = (cloud[:,0] < 0.1)
         mask = mask_1 * mask_2 * mask_3 * mask_4
         cloud_masked = cloud[mask]
 
@@ -166,11 +133,31 @@ class GSNet:
 
         return gg
     
+    def _get_best_grasping_pose(self, gg):
+        gg = gg.nms()
+        gg = gg.sort_by_score()
+        p = gg[0].translation
+        r = gg[0].rotation_matrix
+        t = np.asarray([[r[0][0], r[0][1], r[0][2], p[0]],
+                    [r[1][0], r[1][1], r[1][2], p[1]],
+                    [r[2][0], r[2][1], r[2][2], p[2]],
+                    [0,0,0,1]])
+        E = np.asarray(self.cfg["camera_E"])
+        best_grasping_pose = E.dot(t)
+
+        result = {}
+        result["R"] = r.tolist()
+        result["P"] = p.tolist()
+        result["T"] = best_grasping_pose.tolist()
+        with open(self.cfg["best_grasping_pose_save_path"], 'w') as outfile:
+            yaml.dump(result, outfile, default_flow_style=False)
+    
     def _visualize(self, grasp_group, pointcloud):
         grasp_group = grasp_group.nms()
         grasp_group = grasp_group.sort_by_score()
         if grasp_group.__len__() > 30:
-            grasp_group = grasp_group[:30]
+            # grasp_group = grasp_group[:30]
+            grasp_group = grasp_group[:1]
         grippers = grasp_group.to_open3d_geometry_list()
         cloud = o3d.geometry.PointCloud()
         cloud.points = o3d.utility.Vector3dVector(pointcloud.astype(np.float32))
