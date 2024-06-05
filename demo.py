@@ -74,7 +74,7 @@ class GSNet:
     def _wrap_data_ros(self):
         cloud = np.asarray(self.pcd_ros)
 
-        mask_1 = (cloud[:,2] > 0.8)
+        mask_1 = (cloud[:,2] > 0.1)
         mask_2 = (cloud[:,2] < 1.2)
         mask_3 = (cloud[:,0] > -0.7)
         mask_4 = (cloud[:,0] < 0.2)
@@ -143,7 +143,7 @@ class GSNet:
         gg = gg.nms()
         gg = gg.sort_by_score()
         self.best_gg = gg[0]
-        for gg_to_be_slected in gg[:30]:
+        for gg_to_be_slected in gg[:50]:
             _p = gg_to_be_slected.translation
             _r = gg_to_be_slected.rotation_matrix
             _t = np.asarray([[_r[0][0], _r[0][1], _r[0][2], _p[0]],
@@ -154,7 +154,7 @@ class GSNet:
             _tt = _E.dot(_t)
             rr, rp, ry = self.rot2eul(_tt)
             print("selecting gg, position: "+str(_tt[:3,3])+", rotation: "+str(rr)+", "+str(rp)+", "+str(ry))
-            if(_tt[0,3] > 0 and rp > -0.1):
+            if(_tt[2,3] > 0.05 and rp > -0.1):
                 self.best_gg = gg_to_be_slected
                 print("best gg!")
                 break
