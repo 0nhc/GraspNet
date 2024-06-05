@@ -77,7 +77,7 @@ class GSNet:
         mask_1 = (cloud[:,2] > 0)
         mask_2 = (cloud[:,2] < 1.0)
         mask_3 = (cloud[:,0] > -0.7)
-        mask_4 = (cloud[:,0] < 0.1)
+        mask_4 = (cloud[:,0] < 0.2)
         mask = mask_1 * mask_2 * mask_3 * mask_4
         cloud_masked = cloud[mask]
 
@@ -133,22 +133,68 @@ class GSNet:
 
         return gg
     
+    def rot2eul(self, R):
+        beta = -np.arcsin(R[2,0])
+        alpha = np.arctan2(R[2,1]/np.cos(beta),R[2,2]/np.cos(beta))
+        gamma = np.arctan2(R[1,0]/np.cos(beta),R[0,0]/np.cos(beta))
+        return alpha, beta, gamma
+    
     def _get_best_grasping_pose(self, gg):
         gg = gg.nms()
         gg = gg.sort_by_score()
-        p = gg[0].translation
-        r = gg[0].rotation_matrix
+        self.best_gg = gg[0]
+        for gg_to_be_slected in gg[:30]:
+            _p = gg_to_be_slected.translation
+            _r = gg_to_be_slected.rotation_matrix
+            _t = np.asarray([[_r[0][0], _r[0][1], _r[0][2], _p[0]],
+                            [_r[1][0], _r[1][1], _r[1][2], _p[1]],
+                            [_r[2][0], _r[2][1], _r[2][2], _p[2]],
+                            [0,0,0,1]])
+            _E = np.asarray(self.cfg["camera_E"])
+            _tt = _E.dot(_t)
+            rr, rp, ry = self.rot2eul(_tt)
+            print("selecting gg, position: "+str(_tt[:3,2])+", rotation: "+str(rr)+", "+str(rp)+", "+str(ry))
+            if(_tt[0,2] > 0 and rp > -0.1):
+                self.best_gg = gg_to_be_slected
+                print("best gg!")
+                break
+
+        p = self.best_gg.translation
+        r = self.best_gg.rotation_matrix
         t = np.asarray([[r[0][0], r[0][1], r[0][2], p[0]],
-                    [r[1][0], r[1][1], r[1][2], p[1]],
-                    [r[2][0], r[2][1], r[2][2], p[2]],
-                    [0,0,0,1]])
+                        [r[1][0], r[1][1], r[1][2], p[1]],
+                        [r[2][0], r[2][1], r[2][2], p[2]],
+                        [0,0,0,1]])
         E = np.asarray(self.cfg["camera_E"])
         best_grasping_pose = E.dot(t)
+        gripper_r_offset_1 = np.asarray([[0,0,-1,0],
+                                         [0,1,0,0],
+                                         [1,0,0,0],
+                                         [0,0,0,1]])
+        gripper_r_offset_2 = np.asarray([[-1,0,0,0],
+                                         [0,-1,0,0],
+                                         [0,0,1,0],
+                                         [0,0,0,1]])
+        gripper_r_offset = gripper_r_offset_1.dot(gripper_r_offset_2)
 
+        gripper_t_offset_1 = np.asarray([[1,0,0,-self.cfg["gripper_length_offset_1"]],
+                                         [0,1,0,0],
+                                         [0,0,1,0],
+                                         [0,0,0,1]])
+        print(gripper_t_offset_1)
+
+        gripper_t_offset_2 = np.asarray([[1,0,0,-self.cfg["gripper_length_offset_2"]],
+                                         [0,1,0,0],
+                                         [0,0,1,0],
+                                         [0,0,0,1]])
+        print(gripper_t_offset_2)
+
+        best_grasping_pose_1 = best_grasping_pose.dot(gripper_t_offset_1).dot(gripper_r_offset)
+        best_grasping_pose_2 = best_grasping_pose.dot(gripper_t_offset_2).dot(gripper_r_offset)
         result = {}
-        result["R"] = r.tolist()
-        result["P"] = p.tolist()
-        result["T"] = best_grasping_pose.tolist()
+        result["T1"] = best_grasping_pose_1.tolist()
+        result["T2"] = best_grasping_pose_2.tolist()
+        print(result)
         with open(self.cfg["best_grasping_pose_save_path"], 'w') as outfile:
             yaml.dump(result, outfile, default_flow_style=False)
     
@@ -158,9 +204,9 @@ class GSNet:
         if grasp_group.__len__() > 30:
             # grasp_group = grasp_group[:30]
             grasp_group = grasp_group[:1]
-        grippers = grasp_group.to_open3d_geometry_list()
+        grippers = self.best_gg.to_open3d_geometry()
         cloud = o3d.geometry.PointCloud()
         cloud.points = o3d.utility.Vector3dVector(pointcloud.astype(np.float32))
-        o3d.visualization.draw_geometries([cloud, *grippers])
+        o3d.visualization.draw_geometries([cloud, grippers])
     
 gsnet = GSNet()

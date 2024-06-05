@@ -2,9 +2,9 @@ depth_img_path: "/home/hzx/Projects/GS-Net/corl_example/depth.png"
 camera_width: 720
 camera_height: 1280
 camera_K: [[891.4274291992188, 0.0, 641.3092651367188], [0.0, 891.4274291992188, 355.7140808105469], [0.0, 0.0, 1.0]]
-camera_E: [[-0.98137502, 0.08412189, -0.17270374, 0.40109114], 
-           [0.17159714, 0.78802009, -0.59125186, -0.00142843], 
-           [0.08635679, -0.60987527, -0.78777831, 0.55223411], 
+camera_E: [[-0.9992158,  0.0227443,  0.0324104, 0.3134616518065628], 
+           [-0.0013235,  0.7989101, -0.6014489, -0.002010237753958588], 
+           [-0.0395725, -0.6010202, -0.7982536, 0.7194070364912616], 
            [0, 0, 0, 1]]
 depth_scale: 25.5
 num_point: 15000
@@ -13,5 +13,6 @@ seed_feat_dim: 512
 checkpoint_path: "/home/hzx/Projects/GS-Net/corl_example/epoch10.tar"
 collision_thresh: -1
 voxel_size_cd: 0.01
-
+gripper_length_offset_1: 0.15
+gripper_length_offset_2: -0.005
 best_grasping_pose_save_path: "/home/hzx/Projects/hephaestus_ws/src/hephaestus_apps/config/corl.yaml"
