@@ -32,7 +32,7 @@ class GSNet:
     def __init__(self) -> None:
         rospy.init_node("gsnet", anonymous=True)
         self._init = False
-        self.poincloud_sub = rospy.Subscriber("/camera/depth/color/points", PointCloud2, self._pointcloud_callback)
+        self.poincloud_sub = rospy.Subscriber("/d435_camera/depth/points", PointCloud2, self._pointcloud_callback)
         self.tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
 
         while not self._init:
@@ -74,10 +74,10 @@ class GSNet:
     def _wrap_data_ros(self):
         cloud = np.asarray(self.pcd_ros)
 
-        mask_1 = (cloud[:,2] > 0.1)
-        mask_2 = (cloud[:,2] < 1.2)
-        mask_3 = (cloud[:,0] > -0.7)
-        mask_4 = (cloud[:,0] < 0.2)
+        mask_1 = (cloud[:,2] > 1.2) # Z in Camera Frame > 0.1m
+        mask_2 = (cloud[:,2] < 2.0) # Z in Camera Frame < 1.2m
+        mask_3 = (cloud[:,0] > -0.5) # X in Camera Frame > -0.7m
+        mask_4 = (cloud[:,0] < 0.5) # X in Camera Frame < 0.2m
         mask = mask_1 * mask_2 * mask_3 * mask_4
         cloud_masked = cloud[mask]
 
@@ -146,15 +146,19 @@ class GSNet:
         for gg_to_be_slected in gg[:50]:
             _p = gg_to_be_slected.translation
             _r = gg_to_be_slected.rotation_matrix
+            # Transform Matrix of the Selected Grasping Pose
             _t = np.asarray([[_r[0][0], _r[0][1], _r[0][2], _p[0]],
-                            [_r[1][0], _r[1][1], _r[1][2], _p[1]],
-                            [_r[2][0], _r[2][1], _r[2][2], _p[2]],
-                            [0,0,0,1]])
+                             [_r[1][0], _r[1][1], _r[1][2], _p[1]],
+                             [_r[2][0], _r[2][1], _r[2][2], _p[2]],
+                             [0,        0,       0,        1]])
+            # Extrinsic Parameters of the Camera
             _E = np.asarray(self.cfg["camera_E"])
+            # Selected Grasping Pose in World Coordinate
             _tt = _E.dot(_t)
             rr, rp, ry = self.rot2eul(_tt)
             print("selecting gg, position: "+str(_tt[:3,3])+", rotation: "+str(rr)+", "+str(rp)+", "+str(ry))
-            if(_tt[2,3] > 0.05 and rp > -0.1):
+            # Rules: Z > 0.05m, and 0 < Pitch < 0.785 rad
+            if(_tt[2,3] > 0.05 and rp > 0 and rp < 0.785):
                 self.best_gg = gg_to_be_slected
                 print("best gg!")
                 break
@@ -167,22 +171,35 @@ class GSNet:
                         [0,0,0,1]])
         E = np.asarray(self.cfg["camera_E"])
         best_grasping_pose = E.dot(t)
+        # rot_Y -90
         gripper_r_offset_1 = np.asarray([[0,0,-1,0],
                                          [0,1,0,0],
                                          [1,0,0,0],
                                          [0,0,0,1]])
-        gripper_r_offset_2 = np.asarray([[-1,0,0,0],
-                                         [0,-1,0,0],
+        # gripper_r_offset_1 = np.asarray([[1,0,0,0],
+        #                                  [0,1,0,0],
+        #                                  [0,0,1,0],
+        #                                  [0,0,0,1]])
+
+        # rot_Z 180
+        gripper_r_offset_2 = np.asarray([[1,0,0,0],
+                                         [0,1,0,0],
                                          [0,0,1,0],
                                          [0,0,0,1]])
+        # gripper_r_offset_2 = np.asarray([[-1,0,0,0],
+        #                                  [0,-1,0,0],
+        #                                  [0,0,1,0],
+        #                                  [0,0,0,1]])
         gripper_r_offset = gripper_r_offset_1.dot(gripper_r_offset_2)
 
+        # Pre-grasping Pose Offset
         gripper_t_offset_1 = np.asarray([[1,0,0,-self.cfg["gripper_length_offset_1"]],
                                          [0,1,0,0],
                                          [0,0,1,0],
                                          [0,0,0,1]])
         print(gripper_t_offset_1)
 
+        # Grasping Pose Offset
         gripper_t_offset_2 = np.asarray([[1,0,0,-self.cfg["gripper_length_offset_2"]],
                                          [0,1,0,0],
                                          [0,0,1,0],
