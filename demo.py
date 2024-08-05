@@ -157,8 +157,8 @@ class GSNet:
             _tt = _E.dot(_t)
             rr, rp, ry = self.rot2eul(_tt)
             print("selecting gg, position: "+str(_tt[:3,3])+", rotation: "+str(rr)+", "+str(rp)+", "+str(ry))
-            # Rules: Z > 0.05m, and 0 < Pitch < 0.785 rad
-            if(_tt[2,3] > 0.05 and rp > 0 and rp < 0.785):
+            # Rules: Z > 0.05m, and 0.5 < Pitch < 0.785 rad
+            if(_tt[2,3] > 0.05 and rp > 0.5 and rp < 0.785):
                 self.best_gg = gg_to_be_slected
                 print("best gg!")
                 break
