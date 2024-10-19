@@ -1,0 +1,10 @@
+# checkpoint_path: path to the checkpoint file
+checkpoint_path: "/home/zhengxiao-han/Downloads/gsnet_checkpoint.tar"
+# voxel_size: voxel size for the input point cloud
+voxel_size: 0.005
+# seed_feat_dim: feature dimension for the seed points
+seed_feat_dim: 512
+# collision_thresh: collision threshold for the seed points
+collision_thresh: -1
+# voxel_size_cd: voxel size for the input point cloud for collision detection
+voxel_size_cd: 0.01
