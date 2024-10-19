@@ -5,3 +5,4 @@ scipy
 open3d>=0.8
 Pillow
 tqdm
+flask==3.0.3
