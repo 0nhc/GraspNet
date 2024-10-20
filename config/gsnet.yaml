@@ -8,7 +8,7 @@ camera_E: [[0.0000000,  0.4787004, -0.8779783, 1.000],
            [0.0000000, -0.8779783, -0.4787004, 0.600], 
            [0, 0, 0, 1]]
 depth_scale: 25.5
-num_point: 15000
+num_point: 10000
 voxel_size: 0.005
 seed_feat_dim: 512
 checkpoint_path: "/home/hzx/Projects/GS-Net/corl_example/epoch10.tar"

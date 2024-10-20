@@ -71,10 +71,10 @@ class GSNetFlaskServer:
         # sample points random
         cloud = np.asarray(pcd)
         if len(cloud) >= self.cfg["num_points"]:
-            idxs = np.random.choice(len(cloud), self.cfg["num_point"], replace=False)
+            idxs = np.random.choice(len(cloud), self.cfg["num_points"], replace=False)
         else:
             idxs1 = np.arange(len(cloud))
-            idxs2 = np.random.choice(len(cloud), self.cfg["num_point"] - len(cloud), replace=True)
+            idxs2 = np.random.choice(len(cloud), self.cfg["num_points"] - len(cloud), replace=True)
             idxs = np.concatenate([idxs1, idxs2], axis=0)
         cloud = cloud[idxs]
         ret_dict = {'point_clouds': cloud.astype(np.float32),
