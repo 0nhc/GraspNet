@@ -39,9 +39,9 @@ class GSNetFlaskServer:
             gsnet_input, pcd = self._as_gsnet_input(data)
             # Get the best grasping pose
             gg = self._gsnet_inference(gsnet_input)
-            best_grasp = self._get_best_grasping_pose(gg)
+            ggs = self._get_best_grasping_pose(gg)
 
-            return jsonify(best_grasp.tolist())
+            return jsonify(ggs)
     
 
     def run(self):
@@ -51,15 +51,20 @@ class GSNetFlaskServer:
     def _get_best_grasping_pose(self, gg):
         # Select the best grasping pose
         gg = gg.nms()
-        gg = gg.sort_by_score()
-        self.best_gg = gg[0]
-        p = self.best_gg.translation
-        r = self.best_gg.rotation_matrix
-        t = np.asarray([[r[0][0], r[0][1], r[0][2], p[0]],
-                        [r[1][0], r[1][1], r[1][2], p[1]],
-                        [r[2][0], r[2][1], r[2][2], p[2]],
-                        [0,0,0,1]])
-        return t
+        gg = gg.sort_by_score()[:self.cfg["max_num_grasps"]]
+        ggs = []
+        for g in gg:
+            p = g.translation
+            r = g.rotation_matrix
+            t = np.asarray([[r[0][0], r[0][1], r[0][2], p[0]],
+                            [r[1][0], r[1][1], r[1][2], p[1]],
+                            [r[2][0], r[2][1], r[2][2], p[2]],
+                            [0,0,0,1]])
+            score = g.score
+            data = {'T': t.tolist(), 'score': score}
+            ggs.append(data)
+
+        return ggs
 
 
     def _as_gsnet_input(self, pcd):

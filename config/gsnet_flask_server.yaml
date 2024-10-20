@@ -8,3 +8,5 @@ seed_feat_dim: 512
 collision_thresh: -1
 # voxel_size_cd: voxel size for the input point cloud for collision detection
 voxel_size_cd: 0.01
+# maximum number of grasping poses to be returned
+max_num_grasps: 50
