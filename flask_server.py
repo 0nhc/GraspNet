@@ -68,7 +68,15 @@ class GSNetFlaskServer:
 
 
     def _as_gsnet_input(self, pcd):
+        # sample points random
         cloud = np.asarray(pcd)
+        if len(cloud) >= self.cfg["num_points"]:
+            idxs = np.random.choice(len(cloud), self.cfg["num_point"], replace=False)
+        else:
+            idxs1 = np.arange(len(cloud))
+            idxs2 = np.random.choice(len(cloud), self.cfg["num_point"] - len(cloud), replace=True)
+            idxs = np.concatenate([idxs1, idxs2], axis=0)
+        cloud = cloud[idxs]
         ret_dict = {'point_clouds': cloud.astype(np.float32),
                     'coors': cloud.astype(np.float32) / self.cfg["voxel_size"],
                     'feats': np.ones_like(cloud).astype(np.float32),
