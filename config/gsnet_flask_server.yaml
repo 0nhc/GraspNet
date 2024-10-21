@@ -1,5 +1,5 @@
 # checkpoint_path: path to the checkpoint file
-checkpoint_path: "/home/zhengxiao-han/Downloads/gsnet_checkpoint.tar"
+checkpoint_path: "/home/zhengxiao-han/Downloads/minkresunet_epoch10-1.tar"
 # voxel_size: voxel size for the input point cloud
 voxel_size: 0.005
 # seed_feat_dim: feature dimension for the seed points
@@ -12,3 +12,5 @@ voxel_size_cd: 0.01
 max_num_grasps: 100
 # sample number for the point cloud
 num_points: 10000
+# flag indicating whether to visualize the grasping poses
+visualize: False

@@ -3,6 +3,7 @@ import yaml
 import os
 import torch
 import numpy as np
+import open3d as o3d
 
 from flask import Flask, request, jsonify
 from models.graspnet import GraspNet, pred_decode
@@ -39,9 +40,11 @@ class GSNetFlaskServer:
             gsnet_input, pcd = self._as_gsnet_input(data)
             # Get the best grasping pose
             gg = self._gsnet_inference(gsnet_input)
-            ggs = self._get_best_grasping_pose(gg)
+            gg_return = self._get_best_grasping_pose(gg)
+            if(self.cfg["visualize"]):
+                self._visualize(gg, pcd)
 
-            return jsonify(ggs)
+            return jsonify(gg_return)
     
 
     def run(self):
@@ -52,7 +55,7 @@ class GSNetFlaskServer:
         # Select the best grasping pose
         gg = gg.nms()
         gg = gg.sort_by_score()[:self.cfg["max_num_grasps"]]
-        ggs = []
+        gg_return = []
         for g in gg:
             p = g.translation
             r = g.rotation_matrix
@@ -62,9 +65,9 @@ class GSNetFlaskServer:
                             [0,0,0,1]])
             score = g.score
             data = {'T': t.tolist(), 'score': score}
-            ggs.append(data)
+            gg_return.append(data)
 
-        return ggs
+        return gg_return
 
 
     def _as_gsnet_input(self, pcd):
@@ -133,6 +136,12 @@ class GSNetFlaskServer:
         cfg_path = sys.path[0]+'/config/gsnet_flask_server.yaml'
         with open(cfg_path, 'r') as config:
             self.cfg = yaml.safe_load(config)
+
+    def _visualize(self, grasp_group, pointcloud):
+        grippers = grasp_group.to_open3d_geometry_list()
+        cloud = o3d.geometry.PointCloud()
+        cloud.points = o3d.utility.Vector3dVector(pointcloud.astype(np.float32))
+        o3d.visualization.draw_geometries([cloud, *grippers])
     
 
 gsnetflaskserver = GSNetFlaskServer()
