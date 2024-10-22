@@ -25,26 +25,26 @@ class GSNetFlaskServer:
         # GSNet relateds
         self._load_checkpoint()
 
-        # Storage for point cloud and grasp
-        self.best_gg = None
-        self.pcd = None
-
     
     def setup_routes(self):
         @self.app.route('/get_gsnet_grasp', methods=['POST'])
         def get_gsnet_grasp():
-            # Get data from request, data should be a list of points
-            data = request.json
+            try:
+                # Get data from request, data should be a list of points
+                data = request.json
 
-            # Run GSNet inference
-            gsnet_input, pcd = self._as_gsnet_input(data)
-            # Get the best grasping pose
-            gg = self._gsnet_inference(gsnet_input)
-            gg_return = self._get_best_grasping_pose(gg)
-            if(self.cfg["visualize"]):
-                self._visualize(gg, pcd)
+                # Run GSNet inference
+                gsnet_input, pcd = self._as_gsnet_input(data)
+                # Get the best grasping pose
+                gg = self._gsnet_inference(gsnet_input)
+                gg_return = self._get_best_grasping_pose(gg)
+                if(self.cfg["visualize"]):
+                    self._visualize(gg, pcd)
 
-            return jsonify(gg_return)
+                return jsonify(gg_return)
+            except Exception as e:
+                return jsonify({'error': str(e)})
+                
     
 
     def run(self):
@@ -80,6 +80,7 @@ class GSNetFlaskServer:
             idxs2 = np.random.choice(len(cloud), self.cfg["num_points"] - len(cloud), replace=True)
             idxs = np.concatenate([idxs1, idxs2], axis=0)
         cloud = cloud[idxs]
+        print(cloud.shape)
         ret_dict = {'point_clouds': cloud.astype(np.float32),
                     'coors': cloud.astype(np.float32) / self.cfg["voxel_size"],
                     'feats': np.ones_like(cloud).astype(np.float32),
